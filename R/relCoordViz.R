@@ -12,6 +12,11 @@ relCoordViz <- function(data,
 
   # browser()
 
+  # Create a filler `weight_label` column if working with `rcScaled` dataset
+  if (!("weight_label" %in% colnames(data))) {
+     data$weight_label <- 1
+  }
+
   data_subset <- data %>%
     dplyr::filter(city == this_city) %>%
     dplyr::filter(round %in% waves)
@@ -266,7 +271,7 @@ relCoordViz <- function(data,
            layout = layout_iso(graph1, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph1)$isolate1, NA, igraph::V(graph1)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph1)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph1)$weight1,
            main = "Wave 1",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -274,7 +279,7 @@ relCoordViz <- function(data,
       plot(graph1,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph1)$isolate1, NA, igraph::V(graph1)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph1)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph1)$weight1,
            main = "Wave 1",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -289,7 +294,7 @@ relCoordViz <- function(data,
            layout = layout_iso(graph2, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph2)$isolate2, NA, igraph::V(graph2)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph2)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph2)$weight2,
            main = "Wave 2",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -297,7 +302,7 @@ relCoordViz <- function(data,
       plot(graph2,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph2)$isolate2, NA, igraph::V(graph2)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph2)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph2)$weight2,
            main = "Wave 2",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -312,7 +317,7 @@ relCoordViz <- function(data,
            layout = layout_iso(graph3, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph3)$isolate3, NA, igraph::V(graph3)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph3)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph3)$weight3,
            main = "Wave 3",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -320,7 +325,7 @@ relCoordViz <- function(data,
       plot(graph3,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph3)$isolate3, NA, igraph::V(graph3)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph3)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph3)$weight3,
            main = "Wave 3",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -335,7 +340,7 @@ relCoordViz <- function(data,
            layout = layout_iso(graph4, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph4)$isolate4, NA, igraph::V(graph4)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph4)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph4)$weight4,
            main = "Wave 4",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -343,7 +348,7 @@ relCoordViz <- function(data,
       plot(graph4,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph4)$isolate4, NA, igraph::V(graph4)$color),
-           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
+           edge.color = ifelse(igraph::E(graph4)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph4)$weight4,
            main = "Wave 4",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))

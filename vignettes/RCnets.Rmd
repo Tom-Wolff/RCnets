@@ -7,12 +7,15 @@ vignette: >
 %\VignetteEncoding{UTF-8}
 ---
 
-  fdafasdfa
+My ultimate goal is to tailor the tools in this repository to exist as a standalone R package that RC scholars can readily apply to their own data. However, this requires establishing some conventions surrounding data formatting that will probably take some time to devise. In the meantime, we'll have to start by going through the folloing steps:
+
+1. Load required packages
 
 ```{r}
 library(tidyverse)
 library(ideanet)
 ```
+2. Load this repository's functions into the R environment
 
 ```{r}
 source("../R/support_functions.R")
@@ -20,49 +23,114 @@ source("../R/relCoordMeasure.R")
 source("../R/relCoordViz.R")
 ```
 
-```{r}
-rcLong <- read.csv("../ICPSR_37453/RC_long_edgelist.csv")
-rcScaled <- read.csv("../ICPSR_37453/RC_scaled_edgelist.csv")
-```
+3. Read in formatted data
 
 ```{r}
-test <- relCoordViz(data = rcLong,
-            waves = 1,
-            this_city = 1,
-            threshold = 3,
-            type = "commFreq")
-test
+load("../data/rcLong.rda")
+load("../data/rcScaled.rda")
 ```
 
+# RC Network Visualization Examples
+
+*Note: You'll probably have a better time viewing these visulizations in an external plot window.*
+
+Using the aggregated RC scale measure, plot all four waves of city 1, with ties only included if their RC score is at least 1 standard deviation above the average RC score:
+
 ```{r}
-test2 <- relCoordMeasure(data = rcLong,
+city1_allWaves <- relCoordViz(data = rcScaled,
+                              waves = 1:4,
+                              this_city = 1,
+                              threshold = "1sd")
+city1_allWaves
+```
+
+Using the dataset with individual RC scores, plot communication frequency relationships of Wave 1, City 1, with ties only included if participants reported a score of 3 or higher:
+
+```{r}
+c1W1_commFreq3 <- relCoordViz(data = rcLong,
+                              waves = 1,
+                              this_city = 1,
+                              type = "commFreq",
+                              threshold = 3)
+c1W1_commFreq3
+```
+
+
+Using the dataset with individual RC scores, plot communication frequency relationships of participant 101 in Wave 1, City 1, with ties only included if participants reported a score of 3 or higher:
+
+```{r}
+c1W1_ego101_commFreq3 <- relCoordViz(data = rcLong,
+                              waves = 1,
+                              this_city = 1,
+                              ego = "101",
+                              type = "commFreq",
+                              threshold = 3)
+c1W1_ego101_commFreq3
+```
+
+Similar kind of plot but showing the DA's office to show how ego network visualizations look for the other mode in the network:
+
+```{r}
+c1W1_ego101_commFreq3 <- relCoordViz(data = rcLong,
+                              waves = 1,
+                              this_city = 1,
+                              ego = "da_office",
+                              type = "commFreq",
+                              threshold = 3)
+c1W1_ego101_commFreq3
+```
+
+# RC Network Measurement
+
+An individual example: Using the dataset with individual RC scores, trace a network of communication frequency relationships in Wave 1, City 1, where edges are only included if they have a value of 3 or greater. Then calculate standard node- and system-level measures on this network:
+
+```{r}
+c1W1_commFreq3_measures <- relCoordMeasure(data = rcLong,
                             wave = 1,
                             this_city = 1,
                             type = "commFreq",
                             threshold = 3,
                             keep_weight = FALSE)
-test2$node_level_measures
+
+c1W1_commFreq3_measures$node_level_measures
+```
+```{r}
+c1W1_commFreq3_measures$system_level_measures
 ```
 
-Full set of city/wave combinations to process
+
+Below is a workflow for generating a complete dataset of node- and system-level measures for all cities and waves in our dataset. Here we're generating measures using the aggregated average RC scores as network edge weights, and only including edges if they have a value of 3 or greater:
+
 ```{r}
+# Create a reference sheet of all possible city/wave combinations over which to iterate
 combos <- expand.grid(city = 1:4, wave = 1:4)
+
+# Select the dataset you want to pass through this workflow
 choose_dataset <- rcScaled
+
+# If you're using the `rcLong` dataset, choose with specific RC measure you'd like to use
 type <- NULL
+
+# Choose the cutoff value or heuristic for backboning the RC networks
 threshold <- 3 # Recommend using fixed numbers here so that comparisons across
 # cities and waves are based on same values
+
+# Once backboned, should all edges be treated as having equal weight, or should they keep their original weight value? I'm inclined toward the former, so I've set `keep_weight` here as `FALSE`
 keep_weight <- FALSE
 
 
 for (i in 1:nrow(combos)) {
   
   # Run relCoordMeasure for this city/wave combination
-  this_data <- suppressMessages(relCoordMeasure(data = choose_dataset,
-                               wave = combos[i, "wave"],
-                               this_city = combos[i, "city"],
-                               type = type,
-                               threshold = threshold,
-                               keep_weight = keep_weight))
+  this_data <- suppressWarnings(
+               suppressMessages(
+                relCoordMeasure(data = choose_dataset,
+                                           wave = combos[i, "wave"],
+                                           this_city = combos[i, "city"],
+                                           type = type,
+                                           threshold = threshold,
+                                           keep_weight = keep_weight)
+                   ))
   
   # Extract node measures and system measures dataframes
   node_df <- this_data$node_level_measures
@@ -89,7 +157,7 @@ for (i in 1:nrow(combos)) {
 
 
 # Vector of measure names for pivoting
-measure_names <- colnames(node_level_long)[6:length(colnames(node_level_long))]
+measure_names <- colnames(node_level_long)[7:length(colnames(node_level_long))]
 node_level_wide <- node_level_long %>%
   dplyr::select(-type) %>%
   dplyr::select(id, city, mode, dplyr::everything()) %>%
@@ -106,4 +174,17 @@ sys_level_wide <- system_level_long %>%
 ```
 
 Note: Wide version of measure dataframes useful for analyses (e.g. regression). 
-Long version of measure dataframes useful for visualization in \code{ggplot2} 
+Long version of measure dataframes useful for visualization in \code{ggplot2}.
+
+For example, with the long version of the system-level measure dataframe, we can plot changes in network density across waves for all four cities:
+
+```{r}
+system_level_long %>%
+  dplyr::group_by(city, wave) %>%
+  dplyr::slice(1) %>%
+  ggplot2::ggplot(ggplot2::aes(x = wave, y = density, color = as.factor(city))) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_classic()
+```
+
