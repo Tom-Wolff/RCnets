@@ -4,8 +4,6 @@ relCoordMeasure <- function(data,
                             type = NULL,
                             threshold = NULL,
                             keep_weight = FALSE) {
-
-
   # browser()
 
   data_subset <- data %>%
@@ -27,7 +25,27 @@ relCoordMeasure <- function(data,
   baselines$backbone2 <- baselines$avg_wt + 2*baselines$sd_wt
 
 
+  # Before we backbone, take inventory of full nodelist and identify isolates
+  full_nodelist1 <- data_subset %>%
+    dplyr::group_by(CASEID, WORKGROUP) %>%
+    dplyr::summarize(mean_wt = mean(weight, na.rm = TRUE)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(!is.nan(mean_wt)) %>%
+    dplyr::mutate(mode = 1) %>%
+    dplyr::select(-mean_wt) %>%
+    dplyr::rename(id = CASEID)
 
+  full_nodelist2 <- data_subset %>%
+    dplyr::group_by(alter) %>%
+    dplyr::summarize(mean_wt = mean(weight, na.rm = TRUE)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(!is.nan(mean_wt)) %>%
+    dplyr::mutate(mode = 2) %>%
+    dplyr::select(-mean_wt) %>%
+    dplyr::rename(id = alter) %>%
+    dplyr::mutate(WORKGROUP = id)
+
+  full_nodelist <- dplyr::bind_rows(full_nodelist1, full_nodelist2)
 
   if (is.numeric(threshold)) {
     cut_val <- threshold
@@ -66,10 +84,83 @@ relCoordMeasure <- function(data,
                                    j_elements = data_subset$alter,
                                    weight = data_subset$weight)
 
+  # Replace generated nodelist with full_nodelist just in case
+  this_list$nodelist <- full_nodelist
+
   this_igraph <- bi_igraph(this_list)
+
+  # Get degree counts for within/across-group ties
+  group_match <- data_subset %>%
+    dplyr::mutate(within_group = alter == WORKGROUP,
+                  across_group = alter != WORKGROUP)
+  # Mode 1
+  mode1_match <- group_match %>%
+    dplyr::group_by(CASEID) %>%
+    dplyr::summarize(within_degree = sum(within_group),
+                     across_degree = sum(across_group)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(mode = 1)
+
+  ### Normalizing
+  mode1_denoms <- full_nodelist %>%
+    dplyr::group_by(mode) %>%
+    summarize(count = dplyr::n()-1) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(mode == 2) %>%
+    dplyr::mutate(mode = 1)
+
+  mode1_match <- mode1_match %>%
+    dplyr::left_join(mode1_denoms, by = "mode") %>%
+    dplyr::mutate(norm_within_degree = within_degree/1,
+                  norm_across_degree = across_degree/count) %>%
+    dplyr::select(-count) %>%
+    dplyr::select(id = CASEID, dplyr::contains("within_degree"), dplyr::contains("across_degree"))
+
+  # Mode 2
+  mode2_match <- group_match %>%
+    dplyr::group_by(alter) %>%
+    dplyr::summarize(within_degree = sum(within_group),
+                     across_degree = sum(across_group)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(mode = 2)
+
+  ### Normalizing
+  mode2_denomsA <- full_nodelist %>%
+    dplyr::filter(mode == 2)
+
+  mode2_denomsB <- full_nodelist %>%
+    dplyr::filter(mode == 1) %>%
+    dplyr::mutate(nrow = dplyr::n()) %>%
+    dplyr::group_by(WORKGROUP, nrow) %>%
+    summarize(within_count = dplyr::n(),
+              across_count = nrow - within_count) %>%
+    dplyr::slice(1) %>%
+    dplyr::ungroup() %>%
+    dplyr::rename(id = WORKGROUP)
+
+  mode2_denoms <- mode2_denomsA %>%
+    dplyr::left_join(mode2_denomsB, by = "id") %>%
+    dplyr::mutate(nrow = max(nrow, na.rm = TRUE),
+                  within_count = ifelse(is.na(within_count), 0, within_count),
+                  across_count = ifelse(is.na(across_count), nrow, across_count)) %>%
+    select(id, dplyr::contains("count"))
+
+  mode2_match <- mode2_match %>%
+    dplyr::rename(id = alter) %>%
+    dplyr::left_join(mode2_denoms, by = "id") %>%
+    dplyr::mutate(norm_within_degree = within_degree/within_count,
+                  norm_across_degree = across_degree/across_count) %>%
+    dplyr::select(id, dplyr::contains("within_degree"), dplyr::contains("across_degree"))
+
+
+  group_degree <- dplyr::bind_rows(mode1_match, mode2_match)
+
+
+
 
   nodelist <- this_list$nodelist %>%
     dplyr::left_join(bi_degree(this_list)) %>%
+    dplyr::left_join(group_degree, by = "id") %>%
     dplyr::left_join(bi_betweenness(this_list,
                                     weight_type = "frequency")) %>%
     dplyr::left_join(bi_closeness(this_list,

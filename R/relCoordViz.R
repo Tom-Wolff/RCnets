@@ -3,6 +3,8 @@ relCoordViz <- function(data,
                         this_city = 1,
                         type = NULL,
                         threshold = "1sd",
+                        within_threshold = NULL,
+                        ego = NULL,
                         color_node = TRUE,
                         fix_layout = 0,
                         layout_fun = igraph::layout_with_fr,
@@ -171,25 +173,51 @@ relCoordViz <- function(data,
     cut_val = threshold
   }
 
+  if (is.null(within_threshold)) {
+    within_cut <- cut_val
+  } else {
+
+    if (within_threshold == "mean") {
+      within_cut = baselines$avg_wt
+    } else if (within_threshold == "median") {
+      within_cut = baselines$median_wt
+    } else if (within_threshold == "1sd") {
+      within_cut = baselines$backbone1
+    } else if (within_threshold == "2sd") {
+      within_cut = baselines$backbone2
+    } else {
+      within_cut = within_threshold
+    }
+
+  }
+
+  this_list$edgelist <- this_list$edgelist %>%
+    dplyr::mutate(cut_thresh = ifelse(alter == WORKGROUP, within_cut, cut_val),
+                  within_group = alter == WORKGROUP)
+
   # Create igraph object
   this_igraph <- bi_igraph(this_list)
 
+  # Extract ego network if applicable
+  if (!is.null(ego)) {
+    this_igraph <- igraph::make_ego_graph(this_igraph, nodes = ego)[[1]]
+  }
 
   # Generate initial layout
   if (fix_layout == 1) {
-    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight1 < cut_val))
+    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight1 < igraph::E(this_igraph)$cut_thresh))
     this_layout <- layout_iso(layout_graph, isolate_dist = isolate_dist,
                               layout_fun = layout_fun)
   } else if (fix_layout == 2) {
-    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight2 < cut_val))
+    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight2 < igraph::E(this_igraph)$cut_thresh))
     this_layout <- layout_iso(layout_graph, isolate_dist = isolate_dist,
                               layout_fun = layout_fun)
   } else if (fix_layout == 3) {
-    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight3 < cut_val))
+    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight3 < igraph::E(this_igraph)$cut_thresh))
     this_layout <- layout_iso(layout_graph, isolate_dist = isolate_dist,
                               layout_fun = layout_fun)
   } else if (fix_layout == 4) {
-    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight4 < cut_val))
+    layout_graph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight4 < igraph::E(this_igraph)$cut_thresh))
     this_layout <- layout_iso(layout_graph, isolate_dist = isolate_dist,
                               layout_fun = layout_fun)
   } else {
@@ -231,13 +259,14 @@ relCoordViz <- function(data,
 
   # Create unique graphs for waves as needed
   if (1 %in% waves) {
-    graph1 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight1 < cut_val))
+    graph1 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight1 < igraph::E(this_igraph)$cut_thresh))
 
     if (fix_layout == 0) {
       plot(graph1,
            layout = layout_iso(graph1, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph1)$isolate1, NA, igraph::V(graph1)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph1)$weight1,
            main = "Wave 1",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -245,6 +274,7 @@ relCoordViz <- function(data,
       plot(graph1,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph1)$isolate1, NA, igraph::V(graph1)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph1)$weight1,
            main = "Wave 1",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -252,13 +282,14 @@ relCoordViz <- function(data,
   }
 
   if (2 %in% waves) {
-    graph2 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight2 < cut_val))
+    graph2 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight2 < igraph::E(this_igraph)$cut_thresh))
 
     if (fix_layout == 0) {
       plot(graph2,
            layout = layout_iso(graph2, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph2)$isolate2, NA, igraph::V(graph2)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph2)$weight2,
            main = "Wave 2",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -266,6 +297,7 @@ relCoordViz <- function(data,
       plot(graph2,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph2)$isolate2, NA, igraph::V(graph2)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph2)$weight2,
            main = "Wave 2",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -273,13 +305,14 @@ relCoordViz <- function(data,
   }
 
   if (3 %in% waves) {
-    graph3 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight3 < cut_val))
+    graph3 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight3 < igraph::E(this_igraph)$cut_thresh))
 
     if (fix_layout == 0) {
       plot(graph3,
            layout = layout_iso(graph3, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph3)$isolate3, NA, igraph::V(graph3)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph3)$weight3,
            main = "Wave 3",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -287,6 +320,7 @@ relCoordViz <- function(data,
       plot(graph3,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph3)$isolate3, NA, igraph::V(graph3)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph3)$weight3,
            main = "Wave 3",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -294,13 +328,14 @@ relCoordViz <- function(data,
   }
 
   if (4 %in% waves) {
-    graph4 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight4 < cut_val))
+    graph4 <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight4 < igraph::E(this_igraph)$cut_thresh))
 
     if (fix_layout == 0) {
       plot(graph4,
            layout = layout_iso(graph4, isolate_dist = isolate_dist,
                                layout_fun = layout_fun),
            vertex.color = ifelse(igraph::V(graph4)$isolate4, NA, igraph::V(graph4)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph4)$weight4,
            main = "Wave 4",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
@@ -308,6 +343,7 @@ relCoordViz <- function(data,
       plot(graph4,
            layout = this_layout,
            vertex.color = ifelse(igraph::V(graph4)$isolate4, NA, igraph::V(graph4)$color),
+           edge.color = ifelse(igraph::E(this_igraph)$within_group, "darkblue", "grey"),
            # edge.width = igraph::E(graph4)$weight4,
            main = "Wave 4",
            sub = paste("Threshold weight:", round(cut_val, digits = 2), sep = " "))
