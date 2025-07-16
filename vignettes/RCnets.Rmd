@@ -1,0 +1,109 @@
+---
+  title: "Applying Social Network Analysis Methods to Relational Coordination Data (RCnets)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Applying Social Network Analysis Methods to Relational Coordination Data (RCnets)}
+%\VignetteEngine{knitr::rmarkdown}
+%\VignetteEncoding{UTF-8}
+---
+
+  fdafasdfa
+
+```{r}
+library(tidyverse)
+library(ideanet)
+```
+
+```{r}
+source("../R/support_functions.R")
+source("../R/relCoordMeasure.R")
+source("../R/relCoordViz.R")
+```
+
+```{r}
+rcLong <- read.csv("../ICPSR_37453/RC_long_edgelist.csv")
+rcScaled <- read.csv("../ICPSR_37453/RC_scaled_edgelist.csv")
+```
+
+```{r}
+test <- relCoordViz(data = rcLong,
+            waves = 1,
+            this_city = 1,
+            threshold = 3,
+            type = "commFreq")
+test
+```
+
+```{r}
+test2 <- relCoordMeasure(data = rcLong,
+                            wave = 1,
+                            this_city = 1,
+                            type = "commFreq",
+                            threshold = 3,
+                            keep_weight = FALSE)
+test2$node_level_measures
+```
+
+Full set of city/wave combinations to process
+```{r}
+combos <- expand.grid(city = 1:4, wave = 1:4)
+choose_dataset <- rcScaled
+type <- NULL
+threshold <- 3 # Recommend using fixed numbers here so that comparisons across
+# cities and waves are based on same values
+keep_weight <- FALSE
+
+
+for (i in 1:nrow(combos)) {
+  
+  # Run relCoordMeasure for this city/wave combination
+  this_data <- suppressMessages(relCoordMeasure(data = choose_dataset,
+                               wave = combos[i, "wave"],
+                               this_city = combos[i, "city"],
+                               type = type,
+                               threshold = threshold,
+                               keep_weight = keep_weight))
+  
+  # Extract node measures and system measures dataframes
+  node_df <- this_data$node_level_measures
+  system_df <- this_data$system_level_measures
+  
+  # If working with types, rename columns to indicate specific type being reflected here
+  if (!is.null(type)) {
+    colnames(node_df)[6:length(colnames(node_df))] <- paste(type, colnames(node_df)[6:length(colnames(node_df))], sep = "_")
+    
+    colnames(system_df)[4:length(colnames(system_df))] <- paste(type, colnames(system_df)[4:length(colnames(system_df))], sep = "_")
+  }
+  
+  
+  
+  if (i == 1) {
+    node_level_long <- node_df
+    system_level_long <- system_df
+  } else {
+    node_level_long <- dplyr::bind_rows(node_level_long, node_df)
+    system_level_long <- dplyr::bind_rows(system_level_long, system_df)
+  }
+  
+}
+
+
+# Vector of measure names for pivoting
+measure_names <- colnames(node_level_long)[6:length(colnames(node_level_long))]
+node_level_wide <- node_level_long %>%
+  dplyr::select(-type) %>%
+  dplyr::select(id, city, mode, dplyr::everything()) %>%
+  tidyr::pivot_wider(id_cols = id:mode,
+                     names_from = wave,
+                     values_from = tidyr::all_of(measure_names))
+
+sys_measure_names <- colnames(system_level_long)[4:length(colnames(system_level_long))]
+sys_level_wide <- system_level_long %>%
+  dplyr::select(city, mode, dplyr::everything()) %>%
+  tidyr::pivot_wider(id_cols = city:mode,
+                     names_from = wave,
+                     values_from = tidyr::all_of(sys_measure_names))
+```
+
+Note: Wide version of measure dataframes useful for analyses (e.g. regression). 
+Long version of measure dataframes useful for visualization in \code{ggplot2} 
