@@ -1,0 +1,27 @@
+Bibliography
+Comprehensive Gang Model Evaluation: Integrating Research Into Practice,
+Massachusetts, 2014-2018
+
+This bibliography includes published and unpublished works that are related 
+to ICPSR study 37453. It includes works that are based on primary
+or secondary analysis of the data, or which describe or critique those
+data or the collection methodology. 
+
+If you publish a work or know of other works that are based on these data,
+please send the complete citation and name of the ICPSR study used to:
+icpsr-biblio-notify@umich.edu 
+
+
+1. Beardslee, Jordan; Docherty, Meagan; Yang, Vevette J.H.; Pardini,
+Dustin, "Parental disengagement in childhood and adolescent male gun
+carrying." Pediatrics. Apr 2019, 143, (4),. DOI: 10.1542/peds.2018-1552
+
+2. Gebo, Erika; Bond, Brenda J., "Advancing interorganizational crime and
+violence reduction goals through a relational change intervention."
+Criminal Justice Policy Review. Jun 2022, 33, (5), 455 - 479. DOI:
+10.1177/08874034211065996 2015-R2-CX-0013
+
+3. Gebo, Erika; Bond, Brenda J., "Improving interorganizational
+collaborations: An application in a violence reduction context." Social
+Science Journal. in press 2022,. DOI: 10.1016/j.soscij.2019.09.008 2015-R2-
+CX-0013

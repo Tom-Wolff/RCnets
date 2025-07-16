@@ -1,0 +1,83 @@
+File Manifest for ICPSR 37453
+
+Gebo, Erika, and Brenda J. Bond. Comprehensive Gang Model Evaluation:
+Integrating Research Into Practice, Massachusetts, 2014-2018. ICPSR37453-
+v1. Ann Arbor, MI: Inter-university Consortium for Political and Social
+Research [distributor], 2021-01-28. http://doi.org/10.3886/ICPSR37453.v1
+
+
+Study-level Documentation
+
+    Filename                            Record  Record    Var.    Date        MD5
+                                        Length  Count     Count   Updated     Checksum
+
+    37453-descriptioncitation.pdf       -       -         -       2021-01-28  -
+
+    37453-related_literature.txt        -       -         -       daily       -
+
+    37453-manifest.txt                  -       -         -       daily       -
+
+    37453-Questionnaire.pdf             -       -         -       2021-01-28  1fdfc660f293cefc17106e3eed58a403
+
+    37453-User_guide.pdf                -       -         -       2021-01-28  2f1e5e6196638775bd79750fdcff680d
+
+
+DS0001 Crime Data
+
+    Filename                            Record  Record    Var.    Date        MD5
+                                        Length  Count     Count   Updated     Checksum
+
+    37453-0001-Codebook-ICPSR.pdf       -       -         -       2021-01-28  d0a386611175b92e4804396d4f3db01f
+
+    37453-0001-Data.dta                 -       240       21      2021-01-28  81724fd5fb0f1d5f16fc0b4f29a2c307
+
+    37453-0001-Data.rda                 -       240       21      2021-01-28  56d89b4c2377e42fb85e69a73dc3a9b4
+
+    37453-0001-Data.sav                 -       240       21      2021-01-28  dd85abeb3139d7500921148979a86c4b
+
+    37453-0001-Data.stc                 -       240       21      2021-01-28  dbd72bb7c8ea741417a7888b5eccd35f
+
+    37453-0001-Data.tsv                 -       240       21      2021-01-28  ed37b4f8a8d6fc9c9dea96a5b6af3798
+
+    37453-0001-Data.txt                 45      240       21      2021-01-28  274f6d5377c03fc6a11985eb34c536e6
+
+    37453-0001-Setup.dct                -       -         -       2021-01-28  584cf7bf61266508ae0442c7039e9d08
+
+    37453-0001-Setup.do                 -       -         -       2021-01-28  3c24684044b9edb215b5da7a61617ea4
+
+    37453-0001-Setup.sas                -       -         -       2021-01-28  0f982756f81cd4aa8319bfccc0934697
+
+    37453-0001-Setup.sps                -       -         -       2021-01-28  46c1435ee426275ebf830acc50b33f30
+
+
+DS0002 Relational Coordination Survey
+
+    Filename                            Record  Record    Var.    Date        MD5
+                                        Length  Count     Count   Updated     Checksum
+
+    37453-0002-Codebook-ICPSR.pdf       -       -         -       2021-01-28  75f5e6718f289109f503b341840915e1
+
+    37453-0002-Data.dta                 -       102       642     2021-01-28  aff232a31e928686638c7e5b18718908
+
+    37453-0002-Data.rda                 -       102       642     2021-01-28  7394b62a2bb3ec77c5118efb47db2174
+
+    37453-0002-Data.sav                 -       102       642     2021-01-28  a8178759cc8a871289aaca5533da1dd4
+
+    37453-0002-Data.stc                 -       102       642     2021-01-28  c8f6f5e2e605a137a25070009f8f6cde
+
+    37453-0002-Data.tsv                 -       102       642     2021-01-28  80a08e13b99013f469d4cb8b0617441c
+
+    37453-0002-Data.txt                 1701    102       642     2021-01-28  71de8def9d11c0695f4790ff255ee28f
+
+    37453-0002-Setup.dct                -       -         -       2021-01-28  6a490cf783babad0610392f7eaede23a
+
+    37453-0002-Setup.do                 -       -         -       2021-01-28  f6a43d5f914605a2165bb2abe8dd0435
+
+    37453-0002-Setup.sas                -       -         -       2021-01-28  0af9db59b8246b81c1056fcf7f7f034d
+
+    37453-0002-Setup.sps                -       -         -       2021-01-28  cd8ab66cb3c10da3acaa350d4c5536b4
+
+    37453-0002-Supplemental_syntax.do   -       -         -       2021-01-28  dfb47bc6e07bc4c4e36c2ccc3e3d8c57
+
+    37453-0002-Supplemental_syntax.sas  -       -         -       2021-01-28  c0fbd346bb416ef5d28763c9ce6e1642
+
