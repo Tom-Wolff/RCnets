@@ -78,7 +78,8 @@ strong_nw <- netwrite(edge_netid = strong_el$city,
                       node_time = c("round1", "round2", "round3", "round4"),
 
                       bipartite = TRUE,
-                      within_fun = mean)
+                      within_fun = mean,
+                      shiny = TRUE)
 
 
 
@@ -189,8 +190,6 @@ plot(strong_nw$network1$time4$full_graph$network,
 
 # Step 5 - Aggregate node-level measures
 
-x <- strong_nw$network1
-
 within_net <- function(x) {
 
   # browser()
@@ -198,9 +197,9 @@ within_net <- function(x) {
   for (i in 1:length(x)) {
     these_nodes <- x[[i]]$full_graph$node_measures
 
-    if (!stringr::str_detect(names(x)[i], "time\\d*$")) {
-      these_nodes$time <- names(x)[i]
-    }
+    # if (!stringr::str_detect(names(x)[i], "time\\d*$")) {
+    #   these_nodes$net_id <- names(x)[i]
+    # }
 
     if (i == 1) {
       temp_df <- these_nodes
@@ -214,57 +213,98 @@ within_net <- function(x) {
 
 agg_node <- function(x) {
 
-  browser()
+  # browser()
 
-  temp_dfs <- lapply(x, within_net)
-
-
-
-
-}
-
-
-test2 <- agg_node(strong_nw)
-
-test <- within_net(strong_nw$network1)
-
-agg_nodes <- function(x) {
-
-
-  for (i in 1:length(x))
-
-
-}
-
-
-for (i in 1:length)
-
-
-
-for (i in 1:length(strong_nw)) {
-  this_netid <- names(strong_nw)[i]
-  this_city <- stringr::str_split(this_netid, "_")[[1]][1]
-  this_time <- stringr::str_split(this_netid, "_")[[1]][2]
-
-  these_nodes <- strong_nw[[i]]$full_graph$node_measures %>%
-    dplyr::mutate(city = this_city,
-                  time = this_time) %>%
-    dplyr::select(id, name, mode, city, time, dplyr::everything()) %>%
-    dplyr::select(-id)
-
-  this_system <- strong_nw[[i]]$full_graph$system_level_measures
-  names(this_system)[3] <- this_netid
-
-  if (i == 1) {
-    nodes_processed <- these_nodes
-    system_processed <- this_system
+  if (FALSE %in% stringr::str_detect(names(x), "time\\d*$")) {
+      temp_dfs <- dplyr::bind_rows(lapply(x, within_net))
   } else {
-    nodes_processed <- dplyr::bind_rows(nodes_processed, these_nodes)
-    system_processed <- system_processed %>%
-      dplyr::left_join(this_system, by = c("measure_labels", "measure_descriptions"))
+      temp_dfs <- within_net(x)
   }
 
+  return(temp_dfs)
+
 }
+
+nodes_processed <- agg_node(strong_nw) %>%
+  dplyr::select(-id) %>%
+  dplyr::select(wave, dplyr::everything()) %>%
+  tidyr::pivot_wider(id_cols = node_id:name,
+                     names_from = wave,
+                     values_from = degree:in_largest_bicomponent,
+                     names_prefix = "time")
+
+
+within_sys <- function(x) {
+  for (i in 1:length(x)) {
+    this_df <- x[[i]]$full_graph$system_level_measures
+
+    names(this_df)[3] <- names(x)[i]
+
+    if (i == 1) {
+      temp_df <- this_df
+    } else {
+      temp_df <- dplyr::left_join(temp_df, this_df, by = c("measure_labels", "measure_descriptions"))
+    }
+  }
+  return(temp_df)
+}
+
+
+agg_sys <- function(x) {
+  # browser()
+
+  if (FALSE %in% stringr::str_detect(names(x), "time\\d*$")) {
+    temp_list <- lapply(x, within_sys)
+
+    for (i in 1:length(temp_list)) {
+      colnames(temp_list[[i]])[3:ncol(temp_list[[i]])] <- paste(names(x)[i], colnames(temp_list[[i]])[3:ncol(temp_list[[i]])], sep = "_")
+
+      if (i == 1) {
+        temp_dfs <- temp_list[[i]]
+      } else {
+        temp_dfs <- dplyr::left_join(temp_dfs,
+                                     temp_list[[i]],
+                                     by = c("measure_labels", "measure_descriptions"))
+      }
+
+    }
+
+  } else {
+    temp_dfs <- within_sys(x)
+  }
+
+  return(temp_dfs)
+
+}
+
+system_processed <- agg_sys(strong_nw)
+
+
+
+# for (i in 1:length(strong_nw)) {
+#   this_netid <- names(strong_nw)[i]
+#   this_city <- stringr::str_split(this_netid, "_")[[1]][1]
+#   this_time <- stringr::str_split(this_netid, "_")[[1]][2]
+#
+#   these_nodes <- strong_nw[[i]]$full_graph$node_measures %>%
+#     dplyr::mutate(city = this_city,
+#                   time = this_time) %>%
+#     dplyr::select(id, name, mode, city, time, dplyr::everything()) %>%
+#     dplyr::select(-id)
+#
+#   this_system <- strong_nw[[i]]$full_graph$system_level_measures
+#   names(this_system)[3] <- this_netid
+#
+#   if (i == 1) {
+#     nodes_processed <- these_nodes
+#     system_processed <- this_system
+#   } else {
+#     nodes_processed <- dplyr::bind_rows(nodes_processed, these_nodes)
+#     system_processed <- system_processed %>%
+#       dplyr::left_join(this_system, by = c("measure_labels", "measure_descriptions"))
+#   }
+#
+# }
 
 
 # Step 6 - If a particular respondent wasn't present in a previous wave,
@@ -273,15 +313,15 @@ for (i in 1:length(strong_nw)) {
 
 # Pivoting wider so variables for each time are in adjacent columns
 # rather than separate rows
-nodes_processed2 <- nodes_processed %>%
-  dplyr::select(-net_id) %>%
-  tidyr::pivot_wider(id_cols = c("name", "mode", "city", "WORKGROUP"),
-                     names_from = time,
-                     values_from = degree:in_largest_bicomponent,
-                     names_prefix = "time")
+# nodes_processed2 <- nodes_processed %>%
+#   dplyr::select(-net_id) %>%
+#   tidyr::pivot_wider(id_cols = c("name", "mode", "city", "WORKGROUP"),
+#                      names_from = time,
+#                      values_from = degree:in_largest_bicomponent,
+#                      names_prefix = "time")
 
 # But now we need to pivot longer for merging in mean values
-nodes_processed2_long <- nodes_processed2 %>%
+nodes_processed2_long <- nodes_processed %>%
   tidyr::pivot_longer(cols = degree_time1:in_largest_bicomponent_time4,
                       names_to = "varname",
                       values_to = "value")
@@ -289,8 +329,8 @@ nodes_processed2_long <- nodes_processed2 %>%
 
 # Get within-mode averages for each time period
 ### We'll use this to replace `NA` values for mode 1
-mean_vals <- nodes_processed2 %>%
-  dplyr::select(-name) %>%
+mean_vals <- nodes_processed %>%
+  dplyr::select(-name, -node_id) %>%
   dplyr::group_by(city, mode, WORKGROUP) %>%
   dplyr::summarize_all(mean, na.rm = TRUE) %>%
   dplyr::ungroup() %>%
@@ -307,8 +347,8 @@ nodes_processed3 <- nodes_processed2_long %>%
   tidyr::pivot_wider(names_from = "varname",
                      values_from = "value")
 
-# Notes: If NAs persist, it's because there weren't and respondents from
-# that role group in the preceding wave
+# Notes: If NAs persist, it's because there weren't any respondents from
+# that role group in the preceding wave (or they didn't meet the backbone threshold)
 # Also, currently merging in mean values for future waves if a respondent
 # leaves the network after an earlier wave. Don't know if we want to avoid this.
 
@@ -320,10 +360,11 @@ system_plot <- function(df = system_processed,
                         vars = NULL) {
 
   df2 <- df[df$measure_labels %in% vars,] %>%
-    tidyr::pivot_longer(cols = `1_1`:`4_4`,
+    tidyr::pivot_longer(cols = `network1_time1`:`network4_time4`,
                         names_to = "wave",
                         values_to = "value") %>%
-    dplyr::mutate(city = as.factor(stringr::str_extract(wave, "^\\d")),
+    dplyr::mutate(city = as.factor(stringr::str_extract(wave, "^network\\d")),
+                  city = stringr::str_replace(city, "network", ""),
                   wave = as.numeric(stringr::str_extract(wave, "\\d$")),
                   value = as.numeric(value),
                   measure_labels = as.factor(measure_labels)) %>%
@@ -384,9 +425,23 @@ sysplot_list$`Gini Coefficient, Degree (Mode 2`
 #####################################
 # Adding NULL edges to visualizations
 
+node_id_nodelist <- rc_nodelist2 %>%
+  dplyr::select(CASEID = node_id, dplyr::starts_with("round"))
 
-combined_el <- dplyr::bind_rows(rcScaled,
-                                rcMissing)
+rcMissing2 <- rcMissing %>%
+  dplyr::left_join(node_id_nodelist, by = "CASEID") %>%
+  dplyr::mutate(keep = dplyr::case_when(round == 1 & round1 == TRUE ~ TRUE,
+                                        round == 2 & round2 == TRUE ~ TRUE,
+                                        round == 3 & round3 == TRUE ~ TRUE,
+                                        round == 4 & round4 == TRUE ~ TRUE,
+                                        TRUE ~ FALSE)) %>%
+  dplyr::filter(keep == TRUE) %>%
+  dplyr::select(-dplyr::starts_with("round"), -keep)
+
+
+
+combined_el <- dplyr::bind_rows(strong_el,
+                                rcMissing2)
 
 
 
@@ -403,9 +458,6 @@ null_nw <- netwrite(edge_netid = combined_el$net_id,
 
                       bipartite = TRUE,
                       within_fun = mean)
-
-
-
 
 for (i in 1:length(null_nw)){
 
@@ -428,6 +480,8 @@ for (i in 1:length(null_nw)){
 
   igraph::V(this_igraph)$color <- color_vec$color
 
+  igraph::E(this_igraph)$color <- ifelse(igraph::E(this_igraph)$weight == .5, "orange", "grey")
+
   # igraph::E(this_igraph)$color <- ifelse()
 
   null_nw[[i]]$full_graph$network <- this_igraph
@@ -436,9 +490,10 @@ for (i in 1:length(null_nw)){
 
 
 
+par(mfrow = c(1,1))
 
-
-plot(null_nw$`1_2`$full_graph$network)
+plot(null_nw$`1_1`$full_graph$network,
+     layout = layout_iso(null_nw$`1_1`$full_graph$network))
 
 
 test <- igraph::union(scaled_nw$`1_2`$full_graph$network,
