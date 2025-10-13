@@ -40,7 +40,7 @@ Using the aggregated RC scale measure, plot all four waves of city 1, with ties 
 city1_allWaves <- relCoordViz(data = rcScaled,
                               waves = 1:4,
                               this_city = 1,
-                              threshold = "1sd")
+                              threshold = 4.0000001)
 city1_allWaves
 ```
 

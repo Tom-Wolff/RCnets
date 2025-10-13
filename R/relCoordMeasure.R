@@ -1,3 +1,69 @@
+# User-facing function that can handle multiple cities, waves, and types
+relCoordMeasures <- function(data,
+                             types = NULL,
+                             cities = 1,
+                             waves = 1,
+                             threshold = NULL,
+                             keep_weight = FALSE) {
+
+  # browser()
+
+  if (is.null(types)) {
+    types <- "NULL"
+  }
+
+  # Create a reference sheet of all possible city/wave combinations over which to iterate
+  combos <- expand.grid(city = cities, wave = waves, type = types, threshold = threshold)
+
+  for (i in 1:nrow(combos)) {
+
+    this_type <- NULL
+
+    if (combos[i, "type"] != "NULL") {
+      this_type <- as.character(combos[i, "type"])
+    }
+
+    # Run relCoordMeasure for this city/wave combination
+    this_data <- suppressWarnings(
+      suppressMessages(
+        relCoordMeasure(data = data,
+                        wave = combos[i, "wave"],
+                        this_city = combos[i, "city"],
+                        type = this_type,
+                        threshold = combos[i, "threshold"],
+                        keep_weight = keep_weight)
+      ))
+
+    # Extract node measures and system measures dataframes
+    node_df <- this_data$node_level_measures %>%
+      dplyr::mutate(type = ifelse(is.null(this_type), "Full Scale", this_type),
+                    threshold = combos[i, "threshold"]) %>%
+      dplyr::select(id:mode, type, threshold, dplyr::everything())
+    system_df <- this_data$system_level_measures %>%
+      dplyr::mutate(type = ifelse(is.null(this_type), "Full Scale", this_type),
+                    threshold = combos[i, "threshold"]) %>%
+      dplyr::select(city, wave, type, threshold, dplyr::everything())
+
+
+    if (i == 1) {
+      node_level_long <- node_df
+      system_level_long <- system_df
+    } else {
+      node_level_long <- dplyr::bind_rows(node_level_long, node_df)
+      system_level_long <- dplyr::bind_rows(system_level_long, system_df)
+    }
+  }
+
+  return(list(node_level = node_level_long,
+              system_level = system_level_long))
+
+}
+
+
+
+
+
+# Core function for handling one city/wave/type combination
 relCoordMeasure <- function(data,
                             wave = 1,
                             this_city = 1,
@@ -6,16 +72,20 @@ relCoordMeasure <- function(data,
                             keep_weight = FALSE) {
   # browser()
 
-  data_subset <- data %>%
-    dplyr::filter(city == this_city) %>%
-    dplyr::filter(round == wave) %>%
-    select(CASEID, alter, dplyr::starts_with("weight"), dplyr::everything()) %>%
-    dplyr::mutate(CASEID = as.character(CASEID))
-
 
   if (!is.null(type)) {
-    data_subset <- data_subset %>%
+    data_subset <- data %>%
+      dplyr::filter(city == this_city) %>%
+      dplyr::filter(round == wave) %>%
+      select(CASEID, alter, var, dplyr::starts_with("weight"), dplyr::everything()) %>%
+      dplyr::mutate(CASEID = as.character(CASEID)) %>%
       dplyr::filter(var == type)
+  } else {
+    data_subset <- data %>%
+      dplyr::filter(city == this_city) %>%
+      dplyr::filter(round == wave) %>%
+      select(CASEID, alter, dplyr::starts_with("weight"), dplyr::everything()) %>%
+      dplyr::mutate(CASEID = as.character(CASEID))
   }
 
   baselines <- data.frame(avg_wt = mean(data_subset$weight, na.rm = TRUE),
@@ -174,7 +244,7 @@ relCoordMeasure <- function(data,
 
   nodelist <- nodelist %>% dplyr::select(id, city, wave, dplyr::everything())
 
-
+  # browser()
   # Gini coefficients on centrality measures
   system_level_measures <- nodelist %>%
     dplyr::group_by(mode) %>%
