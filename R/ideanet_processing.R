@@ -185,7 +185,7 @@ plot(strong_nw$network1$time3$full_graph$network,
 plot(strong_nw$network1$time4$full_graph$network,
      layout = layout_iso(strong_nw$network1$time4$full_graph$network))
 
-
+par(mfrow = c(1, 1))
 
 
 # Step 5 - Aggregate node-level measures
@@ -278,6 +278,123 @@ agg_sys <- function(x) {
 }
 
 system_processed <- agg_sys(strong_nw)
+
+
+###### Jaccard and Other Measures of Node Turnover Across Time
+node_turnover <- function(x, bipartite) {
+
+  # browser()
+
+  for (i in 2:length(x)) {
+    if (isTRUE(bipartite)) {
+      col2 <- unlist(x[[i]]$full_graph$node_measures$node_id)
+      col2_m1 <- unlist(x[[i]]$full_graph$node_measures %>%
+                          dplyr::filter(mode == 1) %>%
+                          dplyr::select(node_id))
+      col2_m2 <- unlist(x[[i]]$full_graph$node_measures %>%
+                          dplyr::filter(mode == 2) %>%
+                          dplyr::select(node_id))
+
+      col1 <- unlist(x[[(i-1)]]$full_graph$node_measures$node_id)
+      col1_m1 <- unlist(x[[(i-1)]]$full_graph$node_measures %>%
+                          dplyr::filter(mode == 1) %>%
+                          dplyr::select(node_id))
+      col1_m2 <- unlist(x[[(i-1)]]$full_graph$node_measures %>%
+                          dplyr::filter(mode == 2) %>%
+                          dplyr::select(node_id))
+
+
+      ### How many people left the network after time 1?
+      num_left_m1 <- sum(!(col1_m1 %in% col2_m1))
+      ### How many people entered the network after time 1?
+      num_enter_m1 <- sum(!(col2_m1 %in% col1_m1))
+      ### Jaccard Score
+      jaccard_m1 <- sum(col1_m1 %in% col2_m1) / length(unique(c(col1_m1, col2_m1)))
+
+      ### How many people left the network after time 1?
+      num_left_m2 <- sum(!(col1_m2 %in% col2_m2))
+      ### How many people entered the network after time 1?
+      num_enter_m2 <- sum(!(col2_m2 %in% col1_m2))
+      ### Jaccard Score
+      jaccard_m2 <- sum(col1_m2 %in% col2_m2) / length(unique(c(col1_m2, col2_m2)))
+
+      ### How many people left the network after time 1?
+      num_left <- sum(!(col1 %in% col2))
+      ### How many people entered the network after time 1?
+      num_enter <- sum(!(col2 %in% col1))
+      ### Jaccard Score
+      jaccard <- sum(col1 %in% col2) / length(unique(c(col1, col2)))
+
+      this_df <- data.frame(
+        measure_labels = c(
+        "Number of New Nodes (Mode 1)",
+        "Number of New Nodes (Mode 2)",
+        "Number of New Nodes (Full Graph)",
+        "Number Nodes Departed (Mode 1)",
+        "Number Nodes Departed (Mode 2)",
+        "Number Nodes Departed (Full Graph)",
+        "Jaccard Index, Nodes Across Time (Mode 1)",
+        "Jaccard Index, Nodes Across Time (Mode 2)",
+        "Jaccard Index, Nodes Across Time (Full Graph)"),
+
+        measure_descriptions = c(
+          "The number of nodes in mode 1 entering the graph at this timepoint",
+          "The number of nodes in mode 2 entering the graph at this timepoint",
+          "The overall number of nodes entering the graph at this timepoint",
+          "The number of nodes in mode 1 exiting the graph at this timepoint",
+          "The number of nodes in mode 2 exiting the graph at this timepoint",
+          "The overall number of nodes exiting the graph at this timepoint",
+          "The proportion of nodes in mode 1 present in the network at both this timepoint and the preceding timepoint",
+          "The proportion of nodes in mode 2 present in the network at both this timepoint and the preceding timepoint",
+          "The overall proportion of nodes present in the network at both this timepoint and the preceding timepoint"),
+                            time = c(
+                              as.character(num_enter_m1),
+                              as.character(num_enter_m2),
+                              as.character(num_enter),
+                              as.character(num_left_m1),
+                              as.character(num_left_m2),
+                              as.character(num_left),
+                              as.character(jaccard_m1),
+                              as.character(jaccard_m2),
+                              as.character(jaccard)))
+
+
+
+    } else {
+
+    }
+
+
+    colnames(this_df)[3] <- names(x)[i]
+
+    if (i == 2) {
+      output_df <- this_df
+    } else {
+      output_df <- output_df %>%
+        dplyr::left_join(this_df, by = c("measure_labels",
+                                         "measure_descriptions"))
+    }
+
+  }
+
+  return(output_df)
+
+}
+
+strong_jaccard <- lapply(strong_nw, node_turnover, bipartite = TRUE)
+
+for (i in 1:length(strong_jaccard)) {
+  strong_jaccard[[i]]$netid <- names(strong_jaccard)[i]
+}
+
+jaccard_df <- dplyr::bind_rows(strong_jaccard) %>%
+  tidyr::pivot_wider(names_from = netid,
+                     values_from = dplyr::starts_with("time"))
+
+colnames(jaccard_df) <- sub("time(\\d+)_network(\\d+)", "network\\2_time\\1", names(jaccard_df))
+
+system_processed2 <- dplyr::bind_rows(system_processed,
+                                      jaccard_df)
 
 
 
@@ -422,6 +539,11 @@ sysplot_list$`Global Clustering Coefficient (Alternate`
 sysplot_list$`Gini Coefficient, Degree (Mode 1`
 sysplot_list$`Gini Coefficient, Degree (Mode 2`
 
+##### Make a similar plot showing change in dataset-level average RC score
+##### time.
+
+##### Make TRUE a solid line for the sys plot
+
 #####################################
 # Adding NULL edges to visualizations
 
@@ -459,6 +581,10 @@ null_nw <- netwrite(edge_netid = combined_el$net_id,
                       bipartite = TRUE,
                       within_fun = mean)
 
+# We ultimately found things looked better if we only displayed the null edges.
+# Here's an argument to toggle deleting non-null edges
+delete_actual <- TRUE
+
 for (i in 1:length(null_nw)){
 
   this_igraph <- null_nw[[i]]$full_graph$network
@@ -482,6 +608,10 @@ for (i in 1:length(null_nw)){
 
   igraph::E(this_igraph)$color <- ifelse(igraph::E(this_igraph)$weight == .5, "orange", "grey")
 
+  if (isTRUE(delete_actual)) {
+    this_igraph <- igraph::delete_edges(this_igraph, which(igraph::E(this_igraph)$weight != .5))
+  }
+
   # igraph::E(this_igraph)$color <- ifelse()
 
   null_nw[[i]]$full_graph$network <- this_igraph
@@ -494,6 +624,20 @@ par(mfrow = c(1,1))
 
 plot(null_nw$`1_1`$full_graph$network,
      layout = layout_iso(null_nw$`1_1`$full_graph$network))
+
+# DO JUST A BIPARTITE LAYOUT OF JUST THE MISSING TIES
+plot(null_nw$`1_1`$full_graph$network,
+     layout = igraph::layout.bipartite(null_nw$`1_1`$full_graph$network),
+     edge.color = "darkgrey")
+
+plot(null_nw$`1_1`$full_graph$network,
+     layout = layout_iso(null_nw$`1_1`$full_graph$network,
+                         layout_fun = igraph::layout.bipartite),
+     edge.color = "darkgrey")
+
+plot(null_nw$`1_1`$full_graph$network,
+     layout = igraph::layout_in_circle(null_nw$`1_1`$full_graph$network),
+     edge.color = "darkgrey")
 
 
 test <- igraph::union(scaled_nw$`1_2`$full_graph$network,
