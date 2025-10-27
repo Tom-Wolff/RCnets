@@ -393,7 +393,7 @@ jaccard_df <- dplyr::bind_rows(strong_jaccard) %>%
 
 colnames(jaccard_df) <- sub("time(\\d+)_network(\\d+)", "network\\2_time\\1", names(jaccard_df))
 
-system_processed2 <- dplyr::bind_rows(system_processed,
+system_processed <- dplyr::bind_rows(system_processed,
                                       jaccard_df)
 
 
@@ -480,27 +480,29 @@ system_plot <- function(df = system_processed,
     tidyr::pivot_longer(cols = `network1_time1`:`network4_time4`,
                         names_to = "wave",
                         values_to = "value") %>%
-    dplyr::mutate(city = as.factor(stringr::str_extract(wave, "^network\\d")),
-                  city = stringr::str_replace(city, "network", ""),
+    dplyr::mutate(City = as.factor(stringr::str_extract(wave, "^network\\d")),
+                  City = stringr::str_replace(City, "network", ""),
                   wave = as.numeric(stringr::str_extract(wave, "\\d$")),
                   value = as.numeric(value),
                   measure_labels = as.factor(measure_labels)) %>%
-    dplyr::mutate(intervention = dplyr::case_when(city == 1 ~ TRUE,
-                                                  city == 2 ~ TRUE,
-                                                  city == 3 ~ FALSE,
-                                                  city == 4 ~ FALSE,
+    dplyr::mutate(Intervention = dplyr::case_when(City == 1 ~ "Intervention",
+                                                  City == 2 ~ "Intervention",
+                                                  City == 3 ~ "No Intervention",
+                                                  City == 4 ~ "No Intervention",
                                                   TRUE ~ NA))
 
 
     df2 %>%
       ggplot2::ggplot(ggplot2::aes(x = wave,
                                    y = value,
-                                   color = city,
-                                   linetype = intervention)) +
+                                   color = City,
+                                   linetype = Intervention)) +
       ggplot2::geom_point() +
       ggplot2::geom_line() +
       ggplot2::theme_classic() +
-      ggplot2::labs(title = vars)
+      ggplot2::labs(title = vars,
+                    x = "Wave",
+                    y = "Value")
 
 }
 
@@ -541,6 +543,31 @@ sysplot_list$`Gini Coefficient, Degree (Mode 2`
 
 ##### Make a similar plot showing change in dataset-level average RC score
 ##### time.
+
+meanRC1 <- rcScaled %>%
+  dplyr::group_by(city, round) %>%
+  dplyr::summarize(meanRC = mean(weight)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(measure = 1)
+
+meanRC2 <- rcScaled %>%
+  dplyr::group_by(city, round, CASEID) %>%
+  dplyr::summarize(meanRC = mean(weight)) %>%
+  dplyr::ungroup() %>%
+  dplyr::group_by(city, round) %>%
+  dplyr::summarize(meanRC = mean(meanRC)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(measure = 2)
+
+meanRC <- dplyr::bind_rows(meanRC1, meanRC2) %>%
+  dplyr::mutate(measure = as.factor(measure))
+
+meanRC %>%
+  ggplot2::ggplot(ggplot2::aes(x = round, y = meanRC, color = as.factor(city),
+                               linetype = measure)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_classic()
 
 ##### Make TRUE a solid line for the sys plot
 
@@ -647,3 +674,123 @@ igraph::V(test)$color_2
 
 plot(test,
      vertex.color = igraph::V(test)$color_1)
+
+
+#########################################
+# Set up Data for Diff-in-diff models
+
+
+sys_wide <- system_processed %>%
+  dplyr::select(-measure_descriptions)
+sys_wide <- t(sys_wide)
+
+col_names <- stringr::str_to_lower(sys_wide[1,])
+col_names <- stringr::str_replace(col_names, " \\(mode 1\\)", "_mode1")
+col_names <- stringr::str_replace(col_names, " \\(mode 2\\)", "_mode2")
+col_names <- stringr::str_replace(col_names, " \\(full graph\\)", "_full")
+col_names <- stringr::str_replace(col_names, " \\(indegree\\)", "_in")
+col_names <- stringr::str_replace(col_names, " \\(outdegree\\)", "_out")
+col_names <- stringr::str_replace(col_names, " \\(total\\)", "_total")
+col_names <- stringr::str_replace(col_names, " \\(alternate\\)", "_alt")
+col_names <- stringr::str_replace(col_names, " correlation", "_cor")
+col_names <- stringr::str_replace(col_names, " \\(weak,", "_weak")
+col_names <- stringr::str_replace(col_names, " \\(strong,", "_strong")
+col_names <- stringr::str_replace(col_names, " undirected\\)", "_un")
+col_names <- stringr::str_replace(col_names, " directed\\)", "_dir")
+col_names <- stringr::str_replace(col_names, " \\(weighted\\)", "_weight")
+col_names <- stringr::str_replace(col_names, " \\(normalized\\)", "_norm")
+col_names <- stringr::str_replace(col_names, "number of nodes", "num_nodes")
+col_names <- stringr::str_replace(col_names, "number of ties", "num_ties")
+col_names <- stringr::str_replace(col_names, "number of isolates", "num_iso")
+col_names <- stringr::str_replace(col_names, "mean degree", "mean_degree")
+col_names <- stringr::str_replace(col_names, "mean normalized degree", "mean_norm_degree")
+col_names <- stringr::str_replace(col_names, "mean weighted degree", "mean_weighted_degree")
+col_names <- stringr::str_replace(col_names, "average distance", "avgdist")
+col_names <- stringr::str_replace(col_names, "number of weak components", "num_weak")
+col_names <- stringr::str_replace(col_names, "size of largest weak component", "size_largest_weak")
+col_names <- stringr::str_replace(col_names, "proportion in the largest weak component", "prop_largest_weak")
+col_names <- stringr::str_replace(col_names, "number of strong components", "num_strong")
+col_names <- stringr::str_replace(col_names, "size of largest strong component", "size_largest_strong")
+col_names <- stringr::str_replace(col_names, "proportion in the largest strong component", "prop_largest_strong")
+col_names <- stringr::str_replace(col_names, "number of largest bicomponents", "num_bicomponents")
+col_names <- stringr::str_replace(col_names, "size of largest bicomponent\\(s\\)", "size_largest_bicomponent")
+col_names <- stringr::str_replace(col_names, "proportion in the largest bicomponent\\(s\\)", "prop_largest_bicomponent")
+col_names <- stringr::str_replace(col_names, "degree assortativity", "deg_assort")
+col_names <- stringr::str_replace(col_names, "reciprocity rate", "recip_rate")
+col_names <- stringr::str_replace(col_names, "average geodesic", "avg_geo")
+col_names <- stringr::str_replace(col_names, "global clustering coefficient", "gcc")
+col_names <- stringr::str_replace(col_names, "min-clustering coefficient", "minclust")
+col_names <- stringr::str_replace(col_names, "max-clustering coefficient", "maxclust")
+col_names <- stringr::str_replace(col_names, "average redundancy", "avg_redun")
+col_names <- stringr::str_replace(col_names, "multi-level edge", "multi_edge")
+col_names <- stringr::str_replace(col_names, "pairwise reachability", "pairwise")
+col_names <- stringr::str_replace(col_names, "cross-mode degree", "crossmode_deg")
+col_names <- stringr::str_replace(col_names, "standard deviation, ", "sd_")
+col_names <- stringr::str_replace(col_names, "herfindahl index, ", "herf_")
+col_names <- stringr::str_replace(col_names, "gini coefficient, ", "gini_")
+col_names <- stringr::str_replace(col_names, "theil index, ", "theil_")
+col_names <- stringr::str_replace(col_names, "weighted degree", "wdeg")
+col_names <- stringr::str_replace(col_names, "normalized degree", "normdeg")
+col_names <- stringr::str_replace(col_names, "eigenvector centrality", "eigen")
+col_names <- stringr::str_replace(col_names, "number of new nodes", "num_new")
+col_names <- stringr::str_replace(col_names, "number nodes departed", "num_exit")
+col_names <- stringr::str_replace(col_names, "jaccard index, nodes across time", "jaccard")
+col_names <- stringr::str_trim(col_names)
+
+colnames(sys_wide) <- col_names
+sys_wide <- sys_wide[2:nrow(sys_wide),]
+sys_wide <- as.data.frame(sys_wide)
+for (i in 3:ncol(sys_wide)) {
+  sys_wide[,i] <- as.numeric(sys_wide[,i])
+}
+
+sys_wide$netid <- rownames(sys_wide)
+rownames(sys_wide) <- NULL
+sys_wide <- sys_wide %>%
+  dplyr::mutate(city = as.numeric(
+                       stringr::str_replace(
+                       stringr::str_extract(netid, "^network\\d"),
+                       "network", "")),
+                round = as.numeric(
+                  stringr::str_replace(
+                    stringr::str_extract(netid, "time\\d$"),
+                    "time", ""))) %>%
+  dplyr::select(city, round, dplyr::everything()) %>%
+  dplyr::select(-netid)
+
+wave_diff <- function(x, time) {
+  x2 <- c(NA, x)
+  x <- c(x, NA)
+
+  xdiff <- x-x2
+  xdiff[which(time == 1)] <- NA
+  xdiff <- xdiff[1:(length(xdiff)-1)]
+
+  return(xdiff)
+
+}
+
+sys_diff <- sys_wide
+
+for (i in 5:ncol(sys_diff)) {
+  sys_diff[, i] <- wave_diff(sys_diff[, i], time = sys_diff$round)
+}
+
+sys_diff <- sys_diff %>%
+  dplyr::mutate(intervention = ifelse(city < 3, TRUE, FALSE)) %>%
+  dplyr::select(city, round, intervention, dplyr::everything())
+
+sys_diff$num_new_mode1 <- sys_wide$num_new_mode1
+sys_diff$num_new_mode2 <- sys_wide$num_new_mode2
+sys_diff$num_new_full <- sys_wide$num_new_full
+
+sys_diff$num_exit_mode1 <- sys_wide$num_exit_mode1
+sys_diff$num_exit_mode2 <- sys_wide$num_exit_mode2
+sys_diff$num_exit_full <- sys_wide$num_exit_full
+
+sys_diff$jaccard_mode1 <- sys_wide$jaccard_mode1
+sys_diff$jaccard_mode2 <- sys_wide$jaccard_mode2
+sys_diff$jaccard_full <- sys_wide$jaccard_full
+
+write.csv(sys_wide, "~/Desktop/city_level_measures.csv")
+write.csv(sys_diff, "~/Desktop/city_level_differences.csv")
